@@ -1,8 +1,4 @@
 # Rancher server details
-variable "server_security_group_id" {
-  description = "Security group id of the Rancher server so we can restrict incoming traffic."
-}
-
 variable "server_hostname" {
   description = "Hostname of the Rancher server."
 }
