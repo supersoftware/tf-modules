@@ -11,10 +11,6 @@ data "template_file" "user_data" {
     environment_secret_key  = "${var.environment_secret_key}"
     server_hostname         = "${var.server_hostname}"
   }
-
-  lifecycle {
-    create_before_destroy = true
-  }
 }
 
 output "host_user_data" {
