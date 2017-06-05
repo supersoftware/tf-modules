@@ -1,0 +1,40 @@
+#!/bin/bash
+
+# Setup initial vars
+serverUrl=https://${environment_access_key}:${environment_secret_key}@${server_hostname}
+projectId=${environment_id}
+curlCmd="docker run --rm supersoftware/curl"
+
+# Make initial POST request for a registration token and record the id
+response=$($curlCmd -s -X POST $serverUrl/v1/registrationtokens?projectId=$projectId)
+requestId=$(echo $response | jq -r '.id')
+requestState=$(echo $response | jq -r '.state')
+
+# The registration token request is async so keep checking until it's complete
+while [[ "$requestState" != "active" ]]; do
+	sleep 2
+	response=$($curlCmd -s $serverUrl/v1/registrationtokens/$requestId)
+	requestState=$(echo $response | jq -r '.state')
+done
+
+# Get the instance id from metadata
+instanceId=$($curlCmd -s http://169.254.169.254/latest/meta-data/instance-id)
+instancePrivateIp=$($curlCmd -s http://169.254.169.254/latest/meta-data/local-ipv4)
+
+# Labels
+instanceLabels="HOSTID=$instanceId&CLOUD=aws&CLUSTER=${cluster_name}"
+customLabels="${cluster_instance_labels}"
+if [ -n "$customLabels" ]; then
+	instanceLabels="$instanceLabels&$customLabels"
+fi
+
+# Add external DNS label if there's a public IP address
+instancePublicIp=$($curlCmd -f -s http://169.254.169.254/latest/meta-data/public-ipv4)
+if [ -n "$instancePublicIp" ]; then
+	instanceLabels="$instanceLabels&io.rancher.host.external_dns_ip=$instancePublicIp"
+fi
+
+# Use the command in the response to start the rancher agent
+cmd=$(echo $response | jq -r '.command')
+# add environment variables when launching the agent
+eval $${cmd/sudo docker run /sudo docker run -e CATTLE_AGENT_IP=$instancePrivateIp -e CATTLE_HOST_LABELS=\"$instanceLabels\" }
