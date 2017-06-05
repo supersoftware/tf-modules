@@ -1,6 +1,6 @@
 # User-data template
 # Registers the instance with the rancher server environment
-resource "template_file" "user_data" {
+data "template_file" "user_data" {
   template = "${file("${path.module}/files/userdata.template")}"
 
   vars {
@@ -18,5 +18,5 @@ resource "template_file" "user_data" {
 }
 
 output "host_user_data" {
-  value = "${template_file.user_data.rendered}"
+  value = "${data.template_file.user_data.rendered}"
 }
